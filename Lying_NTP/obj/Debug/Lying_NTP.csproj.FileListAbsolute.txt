@@ -1,0 +1,7 @@
+C:\Users\Оля\Documents\Visual Studio 2017\Projects\Lying_NTP\Lying_NTP\bin\Debug\Lying_NTP.exe.config
+C:\Users\Оля\Documents\Visual Studio 2017\Projects\Lying_NTP\Lying_NTP\bin\Debug\Lying_NTP.exe
+C:\Users\Оля\Documents\Visual Studio 2017\Projects\Lying_NTP\Lying_NTP\bin\Debug\Lying_NTP.pdb
+C:\Users\Оля\Documents\Visual Studio 2017\Projects\Lying_NTP\Lying_NTP\obj\Debug\Lying_NTP.csprojResolveAssemblyReference.cache
+C:\Users\Оля\Documents\Visual Studio 2017\Projects\Lying_NTP\Lying_NTP\obj\Debug\Lying_NTP.csproj.CoreCompileInputs.cache
+C:\Users\Оля\Documents\Visual Studio 2017\Projects\Lying_NTP\Lying_NTP\obj\Debug\Lying_NTP.exe
+C:\Users\Оля\Documents\Visual Studio 2017\Projects\Lying_NTP\Lying_NTP\obj\Debug\Lying_NTP.pdb

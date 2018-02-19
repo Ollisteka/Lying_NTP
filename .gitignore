@@ -1,0 +1,7 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/.idea/.idea.Lying_NTP
+/.vs/Lying_NTP/v15/Server/sqlite3
+/.vs/Lying_NTP/v15

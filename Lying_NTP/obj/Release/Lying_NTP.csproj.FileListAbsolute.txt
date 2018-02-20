@@ -1,0 +1,8 @@
+C:\Users\Оля\Documents\Visual Studio 2017\Projects\Lying_NTP\Lying_NTP\bin\Release\Lying_NTP.exe.config
+C:\Users\Оля\Documents\Visual Studio 2017\Projects\Lying_NTP\Lying_NTP\bin\Release\Lying_NTP.exe
+C:\Users\Оля\Documents\Visual Studio 2017\Projects\Lying_NTP\Lying_NTP\bin\Release\Lying_NTP.pdb
+C:\Users\Оля\Documents\Visual Studio 2017\Projects\Lying_NTP\Lying_NTP\bin\Release\DocoptNet.dll
+C:\Users\Оля\Documents\Visual Studio 2017\Projects\Lying_NTP\Lying_NTP\bin\Release\DocoptNet.pdb
+C:\Users\Оля\Documents\Visual Studio 2017\Projects\Lying_NTP\Lying_NTP\obj\Release\Lying_NTP.csproj.CoreCompileInputs.cache
+C:\Users\Оля\Documents\Visual Studio 2017\Projects\Lying_NTP\Lying_NTP\obj\Release\Lying_NTP.exe
+C:\Users\Оля\Documents\Visual Studio 2017\Projects\Lying_NTP\Lying_NTP\obj\Release\Lying_NTP.pdb

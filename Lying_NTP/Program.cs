@@ -27,8 +27,12 @@ namespace Lying_NTP
 			var arguments = new Docopt().Apply(Usage, args, optionsFirst: true, exit: true);
 
 			var offset = arguments["--num"].AsInt;
-
-			var server = new NtpServer(offset);
+			if (offset < 0)
+			{
+				Console.WriteLine("Offset shouldd be non negative number");
+				Environment.Exit(1);
+			}
+			var server = new NtpServer((uint)offset);
 			Console.WriteLine("\nPress ESC to exit");
 			Task.Run(() => Quit());
 			Task.Run(() => RunClient());

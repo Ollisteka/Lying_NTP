@@ -1,17 +1,18 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
 namespace Lying_NTP
 {
-	internal class NtpServer
+	public class NtpServer
 	{
 		private const string ServerAddress = "time.windows.com";
 		public const int Port = 123;
-		private readonly int fault;
+		private readonly uint fault;
 
-		public NtpServer(int fault = 0)
+		public NtpServer(uint fault = 0)
 		{
 			this.fault = fault;
 		}
@@ -51,26 +52,26 @@ namespace Lying_NTP
 			return networkDateTime.ToLocalTime();
 		}
 
-		private static ulong GetTimestamp(byte[] data, int startIndex)
+		private static uint GetTimestamp(byte[] data, int startIndex)
 		{
 			//Seconds
-			ulong intPart = BitConverter.ToUInt32(data, startIndex);
+			var intPart = BitConverter.ToUInt32(data, startIndex);
 
 			//Seconds fraction (random, so I won't bother) 
-			 ulong fractPart = BitConverter.ToUInt32(data, startIndex + 4);
+			// ulong fractPart = BitConverter.ToUInt32(data, startIndex + 4);
 
 			//Convert From big-endian to little-endian
 			intPart = SwapEndianness(intPart);
-			fractPart = SwapEndianness(fractPart);
+			//fractPart = SwapEndianness(fractPart);
 
-			return intPart + (fractPart) / 0x100000000L;
+			return intPart;
 		}
 
 		private byte[] GetFaultedTime()
 		{
 			var answer = GetDataFromServer();
 			var seconds = GetTimestamp(answer, 40);
-			seconds += (ulong) fault;
+			seconds += fault;
 			seconds = SwapEndianness(seconds);
 			var bytes = BitConverter.GetBytes(seconds);
 			for (var i = 0; i < bytes.Length; i++)
@@ -78,12 +79,17 @@ namespace Lying_NTP
 			return answer;
 		}
 
-		private static uint SwapEndianness(ulong x)
+		internal static uint SwapEndianness(uint x)
 		{
-			return (uint) (((x & 0x000000ff) << 24) |
-							((x & 0x0000ff00) << 8) |
-							((x & 0x00ff0000) >> 8) |
-							((x & 0xff000000) >> 24));
+			var e = Convert.ToString(x, 16);
+			var a = Convert.ToString((x & 0x000000ff) << 24, 16);
+			var b = Convert.ToString((x & 0x0000ff00) << 8, 16);
+			var c = Convert.ToString((x & 0x00ff0000) >> 8, 16);
+			var d = Convert.ToString((x & 0xff000000) >> 24, 16);
+			return ((x & 0x000000ff) << 24) +
+							((x & 0x0000ff00) << 8) +
+							((x & 0x00ff0000) >> 8) +
+							((x & 0xff000000) >> 24);
 		}
 
 		private static bool PacketCorrect(byte[] data, out string error)

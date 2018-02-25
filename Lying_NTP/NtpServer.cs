@@ -45,11 +45,23 @@ namespace Lying_NTP
 			return ntpData;
 		}
 
-		public static DateTime FromBytesToDateTime(byte[] data)
+		public static DateTime FromBytesToDateTime(byte[] data, int pos)
 		{
-			var transmitTimestamp = GetTimestamp(data, 40);
-			var networkDateTime = new DateTime(1900, 1, 1, 0, 0, 0).AddSeconds((long) transmitTimestamp);
-			return networkDateTime.ToLocalTime();
+			ulong intpart = 0, fractpart = 0;
+
+			for (int i = 0; i <= 3; i++)
+			{
+				intpart = 256 * intpart + data[pos + i];
+			}
+			for (int i = 4; i <= 7; i++)
+			{
+				fractpart = 256 * fractpart + data[pos + i];
+			}
+			ulong milliseconds = intpart * 1000 + (fractpart * 1000) / 0x100000000L;
+			TimeSpan span = TimeSpan.FromMilliseconds(milliseconds);
+			DateTime time = new DateTime(1900, 1, 1);
+			time += span;
+			return time;
 		}
 
 		private static uint GetTimestamp(byte[] data, int startIndex)
@@ -66,26 +78,65 @@ namespace Lying_NTP
 
 			return intPart;
 		}
-
-		private byte[] GetFaultedTime()
+		// Compute the 8-byte array, given the date
+		private byte[] SetDate(byte[] SNTPData, int offset, DateTime date)
 		{
-			var answer = GetDataFromServer();
-			var seconds = GetTimestamp(answer, 40);
-			seconds += fault;
-			seconds = SwapEndianness(seconds);
-			var bytes = BitConverter.GetBytes(seconds);
-			for (var i = 0; i < bytes.Length; i++)
-				answer[40 + i] = bytes[i];
-			return answer;
+			ulong intpart = 0, fractpart = 0;
+			DateTime StartOfCentury = new DateTime(1900, 1, 1, 0, 0, 0);    // January 1, 1900 12:00 AM
+
+			ulong milliseconds = (ulong)(date - StartOfCentury).TotalMilliseconds;
+			intpart = milliseconds / 1000;
+			fractpart = ((milliseconds % 1000) * 0x100000000L) / 1000;
+			Console.WriteLine(StartOfCentury.AddSeconds(intpart));
+			ulong temp = intpart;
+			for (int i = 3; i >= 0; i--)
+			{
+				SNTPData[offset + i] = (byte)(temp % 256);
+				temp = temp / 256;
+			}
+
+			temp = fractpart;
+			for (int i = 7; i >= 4; i--)
+			{
+				SNTPData[offset + i] = (byte)(temp % 256);
+				temp = temp / 256;
+			}
+			return SNTPData;
+		}
+
+		private byte[] GetFaultedTime(byte[] data)
+		{
+			//var answer = GetDataFromServer();
+
+			/* Leap Indicator(LI) = 0 (no warning) 2 bit  (missing second)
+			 Version Number (VN) NTP/SNTP version number = 4 3 bit
+			 Mode = 3 (client) 3 bit */
+			data[0] = 0b00100100; //LI = 0 (no warning), VN = 3 (IPv4 only), Mode = 4 (Server Mode)
+			data[1] = 1;
+			//var date = DateTime.Now;
+			data = SetDate(data, 24, DateTime.Now.AddSeconds(fault));
+			
+			data = SetDate(data, 32, DateTime.Now.AddSeconds(fault));
+//			var seconds = (uint) DateTime.Now.Subtract(new DateTime(1900, 1, 1, 0, 0, 0)).TotalSeconds;
+//			var recieveTime =  seconds + fault;
+//
+//			recieveTime = SwapEndianness(recieveTime);
+//
+//			var bytes = BitConverter.GetBytes(recieveTime);
+//			
+//			for (var i = 0; i < bytes.Length; i++)
+//			{
+//			//	data[16 + i] = bytes[i];
+//				data[24 + i] = bytes[i];
+//
+//				data[32 + i] = bytes[i];
+//			}
+			Console.WriteLine(FromBytesToDateTime(data, 32));
+			return data;
 		}
 
 		internal static uint SwapEndianness(uint x)
 		{
-			var e = Convert.ToString(x, 16);
-			var a = Convert.ToString((x & 0x000000ff) << 24, 16);
-			var b = Convert.ToString((x & 0x0000ff00) << 8, 16);
-			var c = Convert.ToString((x & 0x00ff0000) >> 8, 16);
-			var d = Convert.ToString((x & 0xff000000) >> 24, 16);
 			return ((x & 0x000000ff) << 24) +
 							((x & 0x0000ff00) << 8) +
 							((x & 0x00ff0000) >> 8) +
@@ -124,7 +175,7 @@ namespace Lying_NTP
 					continue;
 				}
 				Console.WriteLine("Message received from {0}, sending response...\n", sender);
-				data = GetFaultedTime();
+				data = GetFaultedTime(data);
 				//data = Encoding.ASCII.GetBytes(GetTime().ToString(CultureInfo.InvariantCulture));
 				newsock.Send(data, data.Length, sender);
 			}

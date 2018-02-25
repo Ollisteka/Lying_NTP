@@ -35,7 +35,7 @@ namespace Lying_NTP
 			var server = new NtpServer((uint)offset);
 			Console.WriteLine("\nPress ESC to exit");
 			Task.Run(() => Quit());
-			Task.Run(() => RunClient());
+		//	Task.Run(() => RunClient());
 			server.Run();
 			
 		}
@@ -46,7 +46,7 @@ namespace Lying_NTP
 			{
 				Thread.Sleep(1000);
 				var ntpData = NtpServer.GetDataFromServer(IPAddress.Loopback);
-				Console.WriteLine(NtpServer.FromBytesToDateTime(ntpData));
+				Console.WriteLine(NtpServer.FromBytesToDateTime(ntpData, 32));
 			}
 		}
 

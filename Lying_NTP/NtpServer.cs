@@ -1,165 +1,43 @@
 ﻿using System;
-using System.Diagnostics;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 
 namespace Lying_NTP
 {
+	public class NtpFrame
+	{
+		public const int LeapAndModeMask = 0b00_111_100; //LI = 0, Mode = 4
+		public const int VersionMask = 0b00_111_000; // чтобы скопировать версию клиента
+		public const int Stratum = 3; //получаем время не от самого точного сервера, а попроще
+		public const int PollInterval = 4; //как часто можем опрашивать сервер 2*n
+		public const int Precision = -6; //2*n
+		public const int RootDelay = 1; //сколько времени в секундах понадобилось, чтобы сходить узнать время
+		public const int RootDispersion = 1; //погрешность
+		public static readonly int ReferenceId = 0b0111_1111_0000_0000_0000_0000_0000_0001;
+	}
+
 	public class NtpServer
 	{
 		private const string ServerAddress = "time.windows.com";
 		public const int Port = 123;
-		private readonly uint fault;
+		private readonly int fault;
+		private DateTime lastUpdate = DateTime.MinValue;
 
-		public NtpServer(uint fault = 0)
+		public NtpServer(int fault=0)
 		{
 			this.fault = fault;
 		}
 
-		public static byte[] GetDataFromServer(IPAddress serverAddress=null)
-		{
-			if (serverAddress == null)
-			{
-				var addresses = Dns.GetHostEntry(ServerAddress).AddressList;
-				serverAddress = addresses[0];
-			}
-			var ntpData = new byte[48];
-			/* Leap Indicator(LI) = 0 (no warning) 2 bit  (missing second)
-			 Version Number (VN) NTP/SNTP version number = 4 3 bit
-			 Mode = 3 (client) 3 bit */
-			ntpData[0] = 0b00100011; //LI = 0 (no warning), VN = 3 (IPv4 only), Mode = 3 (Client Mode)
+		private byte[] ReferenceTimestamp =>
+			lastUpdate == DateTime.MinValue
+				? new byte[8]
+				: BitConverter.GetBytes((uint) lastUpdate.Subtract(new DateTime(1900, 1, 1)).TotalSeconds);
 
-			var ipEndPoint = new IPEndPoint(serverAddress, Port);
+		private byte[] TimeOfDay =>
+			BitConverter.GetBytes((uint) DateTime.UtcNow.Subtract(new DateTime(1900, 1, 1)).TotalSeconds + fault);
 
-			using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
-			{
-				socket.Connect(ipEndPoint);
-
-				socket.ReceiveTimeout = 3000;
-
-				socket.Send(ntpData);
-				socket.Receive(ntpData);
-				socket.Close();
-			}
-			return ntpData;
-		}
-
-		public static DateTime FromBytesToDateTime(byte[] data, int pos)
-		{
-			ulong intpart = 0, fractpart = 0;
-
-			for (int i = 0; i <= 3; i++)
-			{
-				intpart = 256 * intpart + data[pos + i];
-			}
-			for (int i = 4; i <= 7; i++)
-			{
-				fractpart = 256 * fractpart + data[pos + i];
-			}
-			ulong milliseconds = intpart * 1000 + (fractpart * 1000) / 0x100000000L;
-			TimeSpan span = TimeSpan.FromMilliseconds(milliseconds);
-			DateTime time = new DateTime(1900, 1, 1);
-			time += span;
-			return time;
-		}
-
-		private static uint GetTimestamp(byte[] data, int startIndex)
-		{
-			//Seconds
-			var intPart = BitConverter.ToUInt32(data, startIndex);
-
-			//Seconds fraction (random, so I won't bother) 
-			// ulong fractPart = BitConverter.ToUInt32(data, startIndex + 4);
-
-			//Convert From big-endian to little-endian
-			intPart = SwapEndianness(intPart);
-			//fractPart = SwapEndianness(fractPart);
-
-			return intPart;
-		}
-		// Compute the 8-byte array, given the date
-		private byte[] SetDate(byte[] SNTPData, int offset, DateTime date)
-		{
-			ulong intpart = 0, fractpart = 0;
-			DateTime StartOfCentury = new DateTime(1900, 1, 1, 0, 0, 0);    // January 1, 1900 12:00 AM
-
-			ulong milliseconds = (ulong)(date - StartOfCentury).TotalMilliseconds;
-			intpart = milliseconds / 1000;
-			fractpart = ((milliseconds % 1000) * 0x100000000L) / 1000;
-			Console.WriteLine(StartOfCentury.AddSeconds(intpart));
-			ulong temp = intpart;
-			for (int i = 3; i >= 0; i--)
-			{
-				SNTPData[offset + i] = (byte)(temp % 256);
-				temp = temp / 256;
-			}
-
-			temp = fractpart;
-			for (int i = 7; i >= 4; i--)
-			{
-				SNTPData[offset + i] = (byte)(temp % 256);
-				temp = temp / 256;
-			}
-			return SNTPData;
-		}
-
-		private byte[] GetFaultedTime(byte[] data)
-		{
-			//var answer = GetDataFromServer();
-
-			/* Leap Indicator(LI) = 0 (no warning) 2 bit  (missing second)
-			 Version Number (VN) NTP/SNTP version number = 4 3 bit
-			 Mode = 3 (client) 3 bit */
-			data[0] = 0b00100100; //LI = 0 (no warning), VN = 3 (IPv4 only), Mode = 4 (Server Mode)
-			data[1] = 1;
-			//var date = DateTime.Now;
-			data = SetDate(data, 24, DateTime.Now.AddSeconds(fault));
-			
-			data = SetDate(data, 32, DateTime.Now.AddSeconds(fault));
-//			var seconds = (uint) DateTime.Now.Subtract(new DateTime(1900, 1, 1, 0, 0, 0)).TotalSeconds;
-//			var recieveTime =  seconds + fault;
-//
-//			recieveTime = SwapEndianness(recieveTime);
-//
-//			var bytes = BitConverter.GetBytes(recieveTime);
-//			
-//			for (var i = 0; i < bytes.Length; i++)
-//			{
-//			//	data[16 + i] = bytes[i];
-//				data[24 + i] = bytes[i];
-//
-//				data[32 + i] = bytes[i];
-//			}
-			Console.WriteLine(FromBytesToDateTime(data, 32));
-			return data;
-		}
-
-		internal static uint SwapEndianness(uint x)
-		{
-			return ((x & 0x000000ff) << 24) +
-							((x & 0x0000ff00) << 8) +
-							((x & 0x00ff0000) >> 8) +
-							((x & 0xff000000) >> 24);
-		}
-
-		private static bool PacketCorrect(byte[] data, out string error)
-		{
-			if (data.Length != 48)
-			{
-				error = $"The message's length should be 48 bytes, but was: {data.Length}";
-				return false;
-			}
-			var mode = data[0] & 0b00000111;
-			if (mode != 3)
-			{
-				error = Encoding.ASCII.GetString(data, 0, data.Length);
-				return false;
-			}
-			error = "OK";
-			return true;
-		}
-		public void Run()
+		public void Run(bool selfServer = true)
 		{
 			var ipep = new IPEndPoint(IPAddress.Loopback, Port);
 			var newsock = new UdpClient(ipep);
@@ -169,16 +47,112 @@ namespace Lying_NTP
 				Console.WriteLine("Waiting for a client...");
 				var data = newsock.Receive(ref sender);
 
-				if (!PacketCorrect(data, out var error))
-				{
-					PrintError($"Message received from {sender} was incorrect:", error);
-					continue;
-				}
 				Console.WriteLine("Message received from {0}, sending response...\n", sender);
-				data = GetFaultedTime(data);
-				//data = Encoding.ASCII.GetBytes(GetTime().ToString(CultureInfo.InvariantCulture));
+				if (selfServer)
+					data = GenerateResponse(data);
+				else
+				{
+					data = ResendToServer(data);
+					data = CompromizeData(data);
+				}
+
 				newsock.Send(data, data.Length, sender);
 			}
+		}
+
+		private byte[] GenerateResponse(byte[] data)
+		{
+			var reversedData = data.ToArray();
+
+			for (var i = 0; i < data.Length; i += 4)
+				reversedData = SwapEndianness(reversedData, i);
+
+			reversedData = ChangeHeader(reversedData);
+
+			for (var i = 0; i < data.Length; i += 4)
+				reversedData = SwapEndianness(reversedData, i);
+			return reversedData;
+		}
+
+		private byte[] ChangeHeader(byte[] reversedData)
+		{
+			var version = reversedData[0] & NtpFrame.VersionMask;
+			reversedData[0] = (byte) (NtpFrame.LeapAndModeMask | version);
+			reversedData[1] = NtpFrame.Stratum;
+			reversedData[2] = NtpFrame.PollInterval;
+			reversedData[3] = unchecked((byte)NtpFrame.Precision);
+			reversedData[4] = NtpFrame.RootDelay;
+			reversedData[8] = NtpFrame.RootDispersion;
+			var ipBytes = SwapEndianness(BitConverter.GetBytes(NtpFrame.ReferenceId));
+			for (var i = 0; i < 4; i++)
+				reversedData[12 + i] = ipBytes[i];
+
+			for (var i = 24; i < 32; i++) //сopy transit to origiante
+				reversedData[i] = reversedData[i + 16];
+
+			if (lastUpdate == DateTime.MinValue)
+				lastUpdate = DateTime.Now;
+
+			for (var i = 0; i < ReferenceTimestamp.Length; i++) //update reference
+				reversedData[16 + i] = ReferenceTimestamp[i];
+			var nowTime = TimeOfDay;
+			for (var i = 0; i < nowTime.Length; i++)
+			{
+				reversedData[32 + i] = nowTime[i]; //recieve
+				reversedData[40 + i] = nowTime[i]; //transmit
+			}
+			return reversedData;
+		}
+
+		private byte[] CompromizeData(byte[] data)
+		{
+			var seconds = ExtractTimestamp(data, 32) + fault;
+			var reversedResultData = SwapEndianness(BitConverter.GetBytes(seconds).Take(4).ToArray());
+			for (var i = 0; i < 4; i++)
+			{
+				data[32 + i] = reversedResultData[i];
+				data[40 + i] = reversedResultData[i];
+			}
+			return data;
+		}
+
+		private static byte[] SwapEndianness(byte[] data, int offset = 0)
+		{
+			var tmp = data[offset];
+			data[offset] = data[offset + 3];
+			data[offset + 3] = tmp;
+
+			tmp = data[offset + 1];
+			data[offset + 1] = data[offset + 2];
+			data[offset + 2] = tmp;
+
+			return data;
+		}
+
+		private uint ExtractTimestamp(byte[] data, int offset)
+		{
+			var subArray = data.Skip(offset).Take(4).ToArray();
+			var reversed = SwapEndianness(subArray);
+			return BitConverter.ToUInt32(reversed, 0);
+		}
+
+		private byte[] ResendToServer(byte[] data)
+		{
+			var ipAddresses = Dns.GetHostEntry(ServerAddress).AddressList;
+			var ipEndPoint = new IPEndPoint(ipAddresses[0], Port);
+
+			using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
+			{
+				socket.Connect(ipEndPoint);
+
+				socket.ReceiveTimeout = 3000;
+
+				socket.Send(data);
+				socket.Receive(data);
+				socket.Close();
+			}
+
+			return data;
 		}
 
 		private void PrintError(string s, string error)

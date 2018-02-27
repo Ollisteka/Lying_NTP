@@ -13,12 +13,13 @@ namespace Lying_NTP
 
 	Usage:
 	  Lying_NTP.exe
-	  Lying_NTP.exe [-n NUM | --num=NUM]
+	  Lying_NTP.exe [-s | --self] [-n NUM | --num=NUM]
 	  Lying_NTP.exe (-h | --help)
 
 	Options:
 	  -n NUM --num=NUM   Specify how many seconds to add [default: 0]
 	  -h --help          Show this screen.
+	  -s --self          The server will generate time and packet itself.
 
 	";
 
@@ -27,27 +28,12 @@ namespace Lying_NTP
 			var arguments = new Docopt().Apply(Usage, args, optionsFirst: true, exit: true);
 
 			var offset = arguments["--num"].AsInt;
-			if (offset < 0)
-			{
-				Console.WriteLine("Offset shouldd be non negative number");
-				Environment.Exit(1);
-			}
-			var server = new NtpServer((uint)offset);
+			var self = arguments["--self"].IsTrue;
+			var server = new NtpServer(offset);
 			Console.WriteLine("\nPress ESC to exit");
 			Task.Run(() => Quit());
-		//	Task.Run(() => RunClient());
-			server.Run();
+			server.Run(self);
 			
-		}
-
-		private static void RunClient()
-		{
-			while (true)
-			{
-				Thread.Sleep(1000);
-				var ntpData = NtpServer.GetDataFromServer(IPAddress.Loopback);
-				Console.WriteLine(NtpServer.FromBytesToDateTime(ntpData, 32));
-			}
 		}
 
 		private static void Quit()

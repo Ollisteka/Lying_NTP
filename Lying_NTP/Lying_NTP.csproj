@@ -54,6 +54,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Helper.cs" />
+    <Compile Include="NtpFields.cs" />
+    <Compile Include="NtpValues.cs" />
+    <Compile Include="NtpFrame.cs" />
     <Compile Include="NtpServer.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

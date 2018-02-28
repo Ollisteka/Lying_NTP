@@ -7,7 +7,7 @@
 		public const int Stratum = 3; //получаем время не от самого точного сервера, а попроще
 		public const int PollInterval = 4; //как часто можем опрашивать сервер 2*n
 		public const int Precision = -6; //2*n
-		public const int RootDelay = 1; //сколько времени в секундах понадобилось, чтобы сходить узнать время
+		public const int RootDelay = 0; //сколько времени в секундах понадобилось, чтобы сходить узнать время
 		public const int RootDispersion = 1; //погрешность
 		public static readonly int ReferenceId = 0b0111_1111_0000_0000_0000_0000_0000_0001;
 	}
